@@ -1,0 +1,15 @@
+- task: PowerShell@2
+  displayName: "Record DR COMPLETE"
+  inputs:
+    targetType: filePath
+    filePath: scripts/dr/push-dr-event.ps1
+    arguments: >
+      -WorkspaceId "$(LA_WORKSPACE_ID)"
+      -SharedKey "$(LA_SHARED_KEY)"
+      -RunType "DR"
+      -AppName "Mock App Service"
+      -PrimaryRegion "CentralIndia"
+      -SecondaryRegion "SouthIndia"
+      -Status "Completed"
+      -TriggeredBy "Automation"
+      -CorrelationId "$(Build.BuildId)"
