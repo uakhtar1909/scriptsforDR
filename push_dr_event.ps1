@@ -1,54 +1,42 @@
 param(
-    [string]$WorkspaceId,
-    [string]$SharedKey,
-    [string]$LogType = "DRActivity",
-    [string]$RunType,
+    [string]$StorageAccountName,
+    [string]$ContainerName = "dr-events",
     [string]$AppName,
     [string]$PrimaryRegion,
     [string]$SecondaryRegion,
+    [string]$RunType,
+    [string]$Stage,
     [string]$Status,
-    [string]$TriggeredBy,
-    [string]$CorrelationId = ""
+    [string]$PipelineRunId
 )
 
-$TimeStamp = (Get-Date).ToUniversalTime().ToString("o")
+$EventTime = (Get-Date).ToUniversalTime()
+$Timestamp = $EventTime.ToString("yyyy-MM-ddTHH-mm-ssZ")
+$DateFolder = $EventTime.ToString("yyyy-MM-dd")
 
-$Body = @(
-    @{
-        TimeGenerated   = $TimeStamp
-        RunType         = $RunType
-        AppName         = $AppName
-        PrimaryRegion   = $PrimaryRegion
-        SecondaryRegion = $SecondaryRegion
-        Status          = $Status
-        TriggeredBy     = $TriggeredBy
-        CorrelationId   = $CorrelationId
-    }
-) | ConvertTo-Json
+$BlobName = "$DateFolder/$RunType-$Stage-$Timestamp.json"
 
-$BodyBytes = [System.Text.Encoding]::UTF8.GetBytes($Body)
-$ContentLength = $BodyBytes.Length
-$Method = "POST"
-$ContentType = "application/json"
-$Resource = "/api/logs"
-$Date = [DateTime]::UtcNow.ToString("r")
-
-$StringToHash = "$Method`n$ContentLength`n$ContentType`n"x-ms-date:$Date"`n$Resource"
-$BytesToHash = [Text.Encoding]::UTF8.GetBytes($StringToHash)
-$KeyBytes = [Convert]::FromBase64String($SharedKey)
-$HmacSha256 = New-Object System.Security.Cryptography.HMACSHA256
-$HmacSha256.Key = $KeyBytes
-$HashedBytes = $HmacSha256.ComputeHash($BytesToHash)
-$Signature = [Convert]::ToBase64String($HashedBytes)
-
-$Authorization = "SharedKey $WorkspaceId:$Signature"
-$Uri = "https://$WorkspaceId.ods.opinsights.azure.com$Resource?api-version=2016-04-01"
-
-$Headers = @{
-    "Authorization" = $Authorization
-    "Log-Type"      = $LogType
-    "x-ms-date"     = $Date
-    "time-generated-field" = "TimeGenerated"
+$Payload = @{
+    EventTime       = $EventTime.ToString("o")
+    RunType         = $RunType
+    Stage           = $Stage
+    AppName         = $AppName
+    PrimaryRegion   = $PrimaryRegion
+    SecondaryRegion = $SecondaryRegion
+    Status          = $Status
+    TriggeredBy     = "AzureDevOps"
+    PipelineRunId   = $PipelineRunId
 }
 
-Invoke-RestMethod -Uri $Uri -Method Post -Headers $Headers -ContentType $ContentType -Body $Body
+$tempFile = New-TemporaryFile
+$Payload | ConvertTo-Json -Depth 5 | Out-File $tempFile -Encoding utf8
+
+az storage blob upload `
+  --account-name $StorageAccountName `
+  --container-name $ContainerName `
+  --name $BlobName `
+  --file $tempFile `
+  --auth-mode login `
+  --overwrite true
+
+Remove-Item $tempFile
