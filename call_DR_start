@@ -1,15 +1,16 @@
-- task: PowerShell@2
-  displayName: "Record DR START"
+- task: AzureCLI@2
+  displayName: "DR Start - Record Timestamp"
   inputs:
-    targetType: filePath
-    filePath: scripts/dr/push-dr-event.ps1
+    azureSubscription: 'ado-uami-service-connection'
+    scriptType: 'ps'
+    scriptLocation: 'scriptPath'
+    scriptPath: 'pilot-light-dmart/templates/scripts/push-dr-event.ps1'
     arguments: >
-      -WorkspaceId "$(LA_WORKSPACE_ID)"
-      -SharedKey "$(LA_SHARED_KEY)"
+      -StorageAccountName drstorageprod
+      -AppName "mock-python-app"
+      -PrimaryRegion "centralindia"
+      -SecondaryRegion "southindia"
       -RunType "DR"
-      -AppName "Mock App Service"
-      -PrimaryRegion "CentralIndia"
-      -SecondaryRegion "SouthIndia"
+      -Stage "Start"
       -Status "Started"
-      -TriggeredBy "Automation"
-      -CorrelationId "$(Build.BuildId)"
+      -PipelineRunId "$(Build.BuildId)"
