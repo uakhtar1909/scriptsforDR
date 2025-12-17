@@ -1,31 +1,31 @@
-param (
-    [Parameter(Mandatory)] [string] $Stage,           # Start / Complete
-    [Parameter(Mandatory)] [string] $AppName,
-    [Parameter(Mandatory)] [string] $PrimaryRegion,
-    [Parameter(Mandatory)] [string] $SecondaryRegion,
-    [Parameter(Mandatory)] [string] $PipelineRunId
+param(
+  [Parameter(Mandatory)] [string]$StorageAccountName,
+  [string]$ContainerName = "dr-events",
+  [Parameter(Mandatory)] [string]$PipelineRunId
 )
 
-$eventTime = (Get-Date).Show
+$evidenceDir = "$(System.DefaultWorkingDirectory)/evidence"
+New-Item -ItemType Directory -Force -Path $evidenceDir | Out-Null
 
-$record = [ordered]@{
-    Timestamp        = $eventTime
-    Stage            = $Stage
-    AppName          = $AppName
-    PrimaryRegion    = $PrimaryRegion
-    SecondaryRegion  = $SecondaryRegion
-    PipelineRunId    = $PipelineRunId
+# Download only blobs from THIS pipeline run
+$blobs = az storage blob list `
+  --account-name $StorageAccountName `
+  --container-name $ContainerName `
+  --auth-mode login `
+  | ConvertFrom-Json
+
+$matchingBlobs = $blobs | Where-Object {
+  $_.name -match $PipelineRunId
 }
 
-$evidencePath = "$(System.DefaultWorkingDirectory)/evidence/dr-evidence.json"
-
-if (-not (Test-Path $evidencePath)) {
-    @($record) | ConvertTo-Json -Depth 3 | Out-File $evidencePath
+foreach ($blob in $matchingBlobs) {
+  az storage blob download `
+    --account-name $StorageAccountName `
+    --container-name $ContainerName `
+    --name $blob.name `
+    --file "$evidenceDir/$(Split-Path $blob.name -Leaf)" `
+    --auth-mode login `
+    --overwrite
 }
-else {
-    $existing = Get-Content $evidencePath | ConvertFrom-Json
-    $existing += $record
-    $existing | ConvertTo-Json -Depth 3 | Out-File $evidencePath
-}
 
-Write-Host "DR Evidence recorded: $Stage"
+Write-Host "Downloaded DR evidence for pipeline run $PipelineRunId"
