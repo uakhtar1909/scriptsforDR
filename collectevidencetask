@@ -20,13 +20,15 @@
 param(
     [Parameter(Mandatory)] [string]$StorageAccountName,
     [string]$ContainerName = "dr-events",
-    [Parameter(Mandatory)] [string]$RunType,            # Start / Complete
-    [Parameter(Mandatory)] [string]$Stage,              # DR / Failover / Failback
+    [Parameter(Mandatory)] [string]$RunType,            
+    [Parameter(Mandatory)] [string]$Stage,              
     [Parameter(Mandatory)] [string]$AppName,
     [Parameter(Mandatory)] [string]$PrimaryRegion,
     [Parameter(Mandatory)] [string]$SecondaryRegion,
-    [Parameter(Mandatory)] [string]$Status              # Success / Failed / InProgress
+    [Parameter(Mandatory)] [string]$Status,             # <-- Note the comma here
+    [string]$PipelineRunId = $env:BUILD_BUILDID
 )
+
 
 $EventTime      = Get-Date
 $Timestamp      = $EventTime.ToString("yyyyMMdd-HHmmss")
