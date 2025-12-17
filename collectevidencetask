@@ -8,3 +8,9 @@
     arguments: >
       -StorageAccountName cirruspldmartvpweu01
       -PipelineRunId "$(Build.BuildId)"
+
+- task: PublishPipelineArtifact@1
+  displayName: "Publish DR Evidence Report"
+  inputs:
+    targetPath: "$(System.DefaultWorkingDirectory)/evidence"
+    artifact: "DR-Evidence"
