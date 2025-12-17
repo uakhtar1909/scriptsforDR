@@ -1,3 +1,4 @@
+
 - task: AzureCLI@2
   displayName: "Collect DR Evidence"
   inputs:
@@ -14,3 +15,65 @@
   inputs:
     targetPath: "$(System.DefaultWorkingDirectory)/evidence"
     artifact: "DR-Evidence"
+
+
+param(
+    [Parameter(Mandatory)] [string]$StorageAccountName,
+    [string]$ContainerName = "dr-events",
+    [Parameter(Mandatory)] [string]$RunType,            # Start / Complete
+    [Parameter(Mandatory)] [string]$Stage,              # DR / Failover / Failback
+    [Parameter(Mandatory)] [string]$AppName,
+    [Parameter(Mandatory)] [string]$PrimaryRegion,
+    [Parameter(Mandatory)] [string]$SecondaryRegion,
+    [Parameter(Mandatory)] [string]$Status              # Success / Failed / InProgress
+)
+
+$EventTime      = Get-Date
+$Timestamp      = $EventTime.ToString("yyyyMMdd-HHmmss")
+$PipelineRunId  = $env:BUILD_BUILDID
+
+
+$Payload = @{
+    EventTime       = $EventTime.ToString("o")
+    RunType         = $RunType
+    Stage           = $Stage
+    AppName         = $AppName
+    PrimaryRegion   = $PrimaryRegion
+    SecondaryRegion = $SecondaryRegion
+    Status          = $Status
+    TriggeredBy     = "AzureDevOps"
+    PipelineRunId   = $PipelineRunId
+}
+
+$evidenceDir = "$env:SYSTEM_DEFAULTWORKINGDIRECTORY/evidence"
+New-Item -ItemType Directory -Force -Path $evidenceDir | Out-Null
+
+$localFile = "$evidenceDir/$RunType-$Stage-$Timestamp.json"
+$Payload | ConvertTo-Json -Depth 5 | Out-File $localFile -Encoding utf8
+
+Write-Host "Local DR evidence written: $localFile"
+
+
+try {
+    $blobName = "$PipelineRunId/$RunType-$Stage-$Timestamp.json"
+
+    $Payload | ConvertTo-Json -Depth 5 | Out-File "temp.json" -Encoding utf8
+
+    az storage blob upload `
+        --account-name $StorageAccountName `
+        --container-name $ContainerName `
+        --name $blobName `
+        --file "temp.json" `
+        --auth-mode login `
+        --overwrite
+
+    Remove-Item "temp.json" -Force
+
+    Write-Host "Blob DR evidence uploaded: $blobName"
+}
+catch {
+    Write-Warning "Blob upload failed (private endpoint / network). Local evidence already captured."
+}
+
+Write-Host "DR event recorded successfully"
+
