@@ -1,0 +1,10 @@
+- task: AzureCLI@2
+  displayName: "Collect DR Evidence"
+  inputs:
+    azureSubscription: "<ADO Service Connection>"
+    scriptType: ps
+    scriptLocation: scriptPath
+    scriptPath: scripts/dr/collect-dr-evidence.ps1
+    arguments: >
+      -StorageAccountName cirruspldmartvpweu01
+      -PipelineRunId "$(Build.BuildId)"
