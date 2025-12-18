@@ -14,3 +14,10 @@
       -Stage "Start"
       -Status "Started"
       -PipelineRunId "$(Build.BuildId)"
+
+- script: |
+    echo "Cleaning Terraform cache"
+    rm -rf .terraform
+    rm -rf ~/.terraform.d
+  displayName: "Clean Terraform cache"
+
