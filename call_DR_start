@@ -21,3 +21,17 @@
     rm -rf ~/.terraform.d
   displayName: "Clean Terraform cache"
 
+- task: AzureCLI@2
+  displayName: "DR Chaos Test - Stop App Service"
+  inputs:
+    azureSubscription: ''
+    scriptType: 'pscore'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az extension add --name chaos
+
+      az chaos experiment start `
+        --resource-group rg-chaos-dr `
+        --name chaos-stop-appservice-dr
+
+
