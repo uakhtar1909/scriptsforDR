@@ -34,4 +34,12 @@
         --resource-group rg-chaos-dr `
         --name chaos-stop-appservice-dr
 
+- task: PowerShell@2
+  displayName: "Wait during Chaos Fault"
+  inputs:
+    targetType: 'inline'
+    script: |
+      Start-Sleep -Seconds 300
+
+
 
